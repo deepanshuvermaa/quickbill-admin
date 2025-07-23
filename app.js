@@ -97,13 +97,13 @@ async function loadDashboardData() {
         }
         
         // Load pending payments
-        const pendingResponse = await authenticatedFetch('/subscriptions/pending-payments');
+        const pendingResponse = await authenticatedFetch('/subscriptions-simple/pending-payments');
         const pendingData = await pendingResponse.json();
         displayPendingPayments(pendingData.data || []);
         document.getElementById('pendingCount').textContent = pendingData.data?.length || 0;
         
-        // Load active subscriptions
-        const activeResponse = await authenticatedFetch('/subscriptions/active');
+        // Load active subscriptions with user details
+        const activeResponse = await authenticatedFetch('/subscriptions-simple/active-subscriptions');
         const activeData = await activeResponse.json();
         displayActiveSubscriptions(activeData.data || []);
         document.getElementById('activeCount').textContent = activeData.data?.length || 0;
@@ -173,7 +173,7 @@ async function approvePayment(paymentId) {
     if (!confirm('Approve this payment and activate subscription?')) return;
     
     try {
-        const response = await authenticatedFetch(`/subscriptions/verify-payment/${paymentId}`, {
+        const response = await authenticatedFetch(`/subscriptions-simple/verify-payment/${paymentId}`, {
             method: 'POST',
             body: JSON.stringify({ status: 'approved' })
         });
@@ -196,7 +196,7 @@ async function rejectPayment(paymentId) {
     if (!reason) return;
     
     try {
-        const response = await authenticatedFetch(`/subscriptions/verify-payment/${paymentId}`, {
+        const response = await authenticatedFetch(`/subscriptions-simple/verify-payment/${paymentId}`, {
             method: 'POST',
             body: JSON.stringify({ status: 'rejected', reason })
         });
@@ -221,22 +221,32 @@ function displayActiveSubscriptions(subscriptions) {
     }
     
     container.innerHTML = subscriptions.map(sub => `
-        <div class="border rounded-lg p-4">
+        <div class="border rounded-lg p-4 hover:shadow-md transition">
             <div class="flex justify-between items-start">
-                <div>
-                    <h4 class="font-semibold">${sub.userName || 'Unknown User'}</h4>
-                    <p class="text-sm text-gray-600">${sub.userEmail}</p>
-                    <div class="mt-2">
+                <div class="flex-1">
+                    <h4 class="font-semibold text-lg">${sub.user_name || 'Unknown User'}</h4>
+                    <p class="text-sm text-gray-600">${sub.user_email}</p>
+                    <p class="text-sm text-gray-500">Phone: ${sub.user_phone || 'N/A'}</p>
+                    <p class="text-sm text-gray-500">Business: ${sub.business_name || 'N/A'}</p>
+                    <div class="mt-2 flex flex-wrap gap-2">
                         <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
-                            ${sub.planName} Plan
+                            ${sub.plan} Plan
                         </span>
-                        <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm ml-2">
-                            ${sub.daysRemaining || 0} days remaining
+                        <span class="inline-block ${sub.days_remaining <= 7 ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'} px-2 py-1 rounded text-sm">
+                            ${sub.days_remaining || 0} days remaining
                         </span>
+                        ${sub.is_trial ? '<span class="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm">Trial</span>' : ''}
+                        ${sub.is_in_grace_period ? '<span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">Grace Period</span>' : ''}
                     </div>
                     <p class="text-xs text-gray-500 mt-2">
-                        Expires: ${new Date(sub.expiresAt).toLocaleDateString()}
+                        Started: ${new Date(sub.start_date).toLocaleDateString()} | 
+                        Expires: ${new Date(sub.end_date).toLocaleDateString()}
                     </p>
+                </div>
+                <div class="ml-4">
+                    <button onclick="extendSubscription('${sub.subscription_id}')" class="text-blue-600 hover:text-blue-800 text-sm">
+                        Extend
+                    </button>
                 </div>
             </div>
         </div>
