@@ -85,32 +85,38 @@ function showDashboard() {
 // Load dashboard data
 async function loadDashboardData() {
     try {
-        // For now, use mock data if API calls fail
-        if (CONFIG.DEMO_MODE) {
-            displayPendingPayments(CONFIG.MOCK_DATA.pendingPayments);
-            document.getElementById('pendingCount').textContent = CONFIG.MOCK_DATA.pendingPayments.length;
-            displayActiveSubscriptions(CONFIG.MOCK_DATA.activeSubscriptions);
-            document.getElementById('activeCount').textContent = CONFIG.MOCK_DATA.activeSubscriptions.length;
-            document.getElementById('userCount').textContent = CONFIG.MOCK_DATA.users.length;
-            document.getElementById('revenueCount').textContent = '₹15,996';
-            return;
-        }
+        console.log('Loading dashboard data...');
         
         // Load pending payments
         const pendingResponse = await authenticatedFetch('/subscriptions-simple/pending-payments');
+        console.log('Pending payments response:', pendingResponse.status);
+        if (!pendingResponse.ok) {
+            console.error('Failed to load pending payments:', await pendingResponse.text());
+        }
         const pendingData = await pendingResponse.json();
+        console.log('Pending payments data:', pendingData);
         displayPendingPayments(pendingData.data || []);
         document.getElementById('pendingCount').textContent = pendingData.data?.length || 0;
         
         // Load active subscriptions with user details
         const activeResponse = await authenticatedFetch('/subscriptions-simple/active-subscriptions');
+        console.log('Active subscriptions response:', activeResponse.status);
+        if (!activeResponse.ok) {
+            console.error('Failed to load active subscriptions:', await activeResponse.text());
+        }
         const activeData = await activeResponse.json();
+        console.log('Active subscriptions data:', activeData);
         displayActiveSubscriptions(activeData.data || []);
         document.getElementById('activeCount').textContent = activeData.data?.length || 0;
         
         // Load user stats
         const usersResponse = await authenticatedFetch('/admin/users');
+        console.log('Users response:', usersResponse.status);
+        if (!usersResponse.ok) {
+            console.error('Failed to load users:', await usersResponse.text());
+        }
         const usersData = await usersResponse.json();
+        console.log('Users data:', usersData);
         document.getElementById('userCount').textContent = usersData.data?.length || 0;
         
         // Calculate monthly revenue
@@ -119,6 +125,7 @@ async function loadDashboardData() {
         
     } catch (error) {
         console.error('Error loading dashboard:', error);
+        console.error('Error details:', error.message, error.stack);
     }
 }
 
@@ -342,4 +349,28 @@ function calculateMonthlyRevenue(subscriptions) {
     });
     
     return thisMonth.reduce((total, sub) => total + (sub.amount || 0), 0);
+}
+
+// Extend subscription function
+async function extendSubscription(userId) {
+    const days = prompt('Enter number of days to extend subscription:');
+    if (!days || isNaN(days)) return;
+    
+    try {
+        const response = await authenticatedFetch('/admin/extend-subscription', {
+            method: 'POST',
+            body: JSON.stringify({ userId, days: parseInt(days) })
+        });
+        
+        if (response.ok) {
+            alert('Subscription extended successfully!');
+            loadDashboardData(); // Reload data
+        } else {
+            const error = await response.json();
+            alert('Failed to extend subscription: ' + error.message);
+        }
+    } catch (error) {
+        console.error('Error extending subscription:', error);
+        alert('Failed to extend subscription. Please try again.');
+    }
 }
