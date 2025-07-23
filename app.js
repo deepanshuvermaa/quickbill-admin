@@ -250,9 +250,12 @@ function displayActiveSubscriptions(subscriptions) {
                         Expires: ${new Date(sub.end_date).toLocaleDateString()}
                     </p>
                 </div>
-                <div class="ml-4">
-                    <button onclick="extendSubscription('${sub.subscription_id}')" class="text-blue-600 hover:text-blue-800 text-sm">
-                        Extend
+                <div class="ml-4 space-x-2">
+                    <button onclick="showSubscriptionModal('${sub.user_id}', '${sub.user_name}', '${sub.user_email}', '${sub.plan}', '${sub.status}')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                        Manage
+                    </button>
+                    <button onclick="forceRefresh('${sub.user_id}')" class="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700">
+                        Refresh
                     </button>
                 </div>
             </div>
@@ -351,26 +354,174 @@ function calculateMonthlyRevenue(subscriptions) {
     return thisMonth.reduce((total, sub) => total + (sub.amount || 0), 0);
 }
 
-// Extend subscription function
-async function extendSubscription(userId) {
-    const days = prompt('Enter number of days to extend subscription:');
-    if (!days || isNaN(days)) return;
+// Show subscription management modal
+function showSubscriptionModal(userId, userName, userEmail, currentPlan, currentStatus) {
+    const modalHtml = `
+        <div id="subscriptionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                <h3 class="text-lg font-semibold mb-4">Manage Subscription</h3>
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600">User: ${userName}</p>
+                    <p class="text-sm text-gray-600">Email: ${userEmail}</p>
+                    <p class="text-sm text-gray-600">Current Plan: ${currentPlan}</p>
+                    <p class="text-sm text-gray-600">Status: ${currentStatus}</p>
+                </div>
+                
+                <div class="space-y-3">
+                    <button onclick="activateSubscription('${userId}')" class="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                        Activate Subscription
+                    </button>
+                    <button onclick="deactivateSubscription('${userId}')" class="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                        Deactivate Subscription
+                    </button>
+                    <button onclick="showExtendModal('${userId}')" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Extend Subscription
+                    </button>
+                    <button onclick="showChangePlanModal('${userId}')" class="w-full bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                        Change Plan
+                    </button>
+                    <button onclick="closeSubscriptionModal()" class="w-full bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeSubscriptionModal() {
+    const modal = document.getElementById('subscriptionModal');
+    if (modal) modal.remove();
+}
+
+// Activate subscription
+async function activateSubscription(userId) {
+    const plan = prompt('Enter plan (silver/gold/platinum):', 'platinum');
+    const days = prompt('Enter number of days:', '30');
+    
+    if (!plan || !days) return;
     
     try {
-        const response = await authenticatedFetch('/admin/extend-subscription', {
+        const response = await authenticatedFetch(`/admin/subscriptions/activate/${userId}`, {
             method: 'POST',
-            body: JSON.stringify({ userId, days: parseInt(days) })
+            body: JSON.stringify({ plan, days: parseInt(days) })
+        });
+        
+        if (response.ok) {
+            alert('Subscription activated successfully!');
+            closeSubscriptionModal();
+            loadDashboardData();
+        } else {
+            const error = await response.json();
+            alert('Failed: ' + error.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to activate subscription');
+    }
+}
+
+// Deactivate subscription
+async function deactivateSubscription(userId) {
+    if (!confirm('Are you sure you want to deactivate this subscription?')) return;
+    
+    try {
+        const response = await authenticatedFetch(`/admin/subscriptions/deactivate/${userId}`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            alert('Subscription deactivated successfully!');
+            closeSubscriptionModal();
+            loadDashboardData();
+        } else {
+            const error = await response.json();
+            alert('Failed: ' + error.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to deactivate subscription');
+    }
+}
+
+// Show extend modal
+function showExtendModal(userId) {
+    const days = prompt('Enter number of days to extend:', '30');
+    if (!days || isNaN(days)) return;
+    
+    extendSubscription(userId, parseInt(days));
+}
+
+// Extend subscription
+async function extendSubscription(userId, days) {
+    try {
+        const response = await authenticatedFetch(`/admin/subscriptions/extend/${userId}`, {
+            method: 'POST',
+            body: JSON.stringify({ days })
         });
         
         if (response.ok) {
             alert('Subscription extended successfully!');
-            loadDashboardData(); // Reload data
+            closeSubscriptionModal();
+            loadDashboardData();
         } else {
             const error = await response.json();
-            alert('Failed to extend subscription: ' + error.message);
+            alert('Failed: ' + error.message);
         }
     } catch (error) {
-        console.error('Error extending subscription:', error);
-        alert('Failed to extend subscription. Please try again.');
+        console.error('Error:', error);
+        alert('Failed to extend subscription');
+    }
+}
+
+// Show change plan modal
+function showChangePlanModal(userId) {
+    const plan = prompt('Enter new plan (silver/gold/platinum):');
+    if (!plan) return;
+    
+    changePlan(userId, plan);
+}
+
+// Change plan
+async function changePlan(userId, plan) {
+    try {
+        const response = await authenticatedFetch(`/admin/subscriptions/change-plan/${userId}`, {
+            method: 'POST',
+            body: JSON.stringify({ plan })
+        });
+        
+        if (response.ok) {
+            alert('Plan changed successfully!');
+            closeSubscriptionModal();
+            loadDashboardData();
+        } else {
+            const error = await response.json();
+            alert('Failed: ' + error.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to change plan');
+    }
+}
+
+// Force refresh subscription
+async function forceRefresh(userId) {
+    try {
+        const response = await authenticatedFetch(`/admin/subscriptions/force-refresh/${userId}`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            alert(`Subscription refreshed!\n\nUser: ${result.data.user.name}\nPlan: ${result.data.subscription.plan}\nStatus: ${result.data.subscription.status}\nDays Remaining: ${result.data.subscription.daysRemaining}\n\nUser should log out and log back in.`);
+            loadDashboardData();
+        } else {
+            const error = await response.json();
+            alert('Failed: ' + error.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to refresh subscription');
     }
 }
