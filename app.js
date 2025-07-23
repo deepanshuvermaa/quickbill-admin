@@ -36,20 +36,29 @@ async function handleLogin(e) {
         
         if (response.ok) {
             const result = await response.json();
+            console.log('Login response:', result);
             
             // Handle the response structure from your API
-            const userData = result.data || result;
-            const user = userData.user;
-            const token = userData.token;
-            
-            // Check if user is admin
-            if (user && (user.email === 'deepanshuverma966@gmail.com' || CONFIG.ADMIN_EMAILS.includes(user.email))) {
-                authToken = token;
-                currentUser = user;
-                localStorage.setItem('adminToken', authToken);
-                showDashboard();
+            // Your API returns: { success: true, data: { user: {...}, token: "..." } }
+            if (result.success && result.data) {
+                const user = result.data.user;
+                const token = result.data.token;
+                
+                console.log('User:', user);
+                console.log('Token:', token ? 'Present' : 'Missing');
+                
+                // Check if user is admin
+                if (user && (user.email === 'deepanshuverma966@gmail.com' || CONFIG.ADMIN_EMAILS.includes(user.email))) {
+                    authToken = token;
+                    currentUser = user;
+                    localStorage.setItem('adminToken', authToken);
+                    showDashboard();
+                } else {
+                    showError('Access denied. Admin privileges required.');
+                }
             } else {
-                showError('Access denied. Admin privileges required.');
+                showError('Invalid response format from server');
+                console.error('Unexpected response format:', result);
             }
         } else {
             showError('Invalid email or password');
@@ -76,6 +85,17 @@ function showDashboard() {
 // Load dashboard data
 async function loadDashboardData() {
     try {
+        // For now, use mock data if API calls fail
+        if (CONFIG.DEMO_MODE) {
+            displayPendingPayments(CONFIG.MOCK_DATA.pendingPayments);
+            document.getElementById('pendingCount').textContent = CONFIG.MOCK_DATA.pendingPayments.length;
+            displayActiveSubscriptions(CONFIG.MOCK_DATA.activeSubscriptions);
+            document.getElementById('activeCount').textContent = CONFIG.MOCK_DATA.activeSubscriptions.length;
+            document.getElementById('userCount').textContent = CONFIG.MOCK_DATA.users.length;
+            document.getElementById('revenueCount').textContent = '₹15,996';
+            return;
+        }
+        
         // Load pending payments
         const pendingResponse = await authenticatedFetch('/subscriptions/pending-payments');
         const pendingData = await pendingResponse.json();
@@ -189,6 +209,38 @@ async function rejectPayment(paymentId) {
         console.error('Error:', error);
         alert('Error rejecting payment');
     }
+}
+
+// Display active subscriptions
+function displayActiveSubscriptions(subscriptions) {
+    const container = document.getElementById('activeList');
+    
+    if (subscriptions.length === 0) {
+        container.innerHTML = '<p class="text-gray-500">No active subscriptions</p>';
+        return;
+    }
+    
+    container.innerHTML = subscriptions.map(sub => `
+        <div class="border rounded-lg p-4">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h4 class="font-semibold">${sub.userName || 'Unknown User'}</h4>
+                    <p class="text-sm text-gray-600">${sub.userEmail}</p>
+                    <div class="mt-2">
+                        <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
+                            ${sub.planName} Plan
+                        </span>
+                        <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm ml-2">
+                            ${sub.daysRemaining || 0} days remaining
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">
+                        Expires: ${new Date(sub.expiresAt).toLocaleDateString()}
+                    </p>
+                </div>
+            </div>
+        </div>
+    `).join('');
 }
 
 // View payment proof
