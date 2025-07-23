@@ -48,7 +48,7 @@ async function handleLogin(e) {
                 console.log('Token:', token ? 'Present' : 'Missing');
                 
                 // Check if user is admin
-                if (user && (user.email === 'deepanshuverma966@gmail.com' || CONFIG.ADMIN_EMAILS.includes(user.email))) {
+                if (user && user.email === 'deepanshuverma966@gmail.com') {
                     authToken = token;
                     currentUser = user;
                     localStorage.setItem('adminToken', authToken);
