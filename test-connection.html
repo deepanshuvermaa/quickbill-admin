@@ -76,12 +76,17 @@
                 });
                 
                 if (response.ok) {
-                    const data = await response.json();
-                    addResult('Login Test', 'success', `✓ Login successful: ${data.user.email}`);
-                    localStorage.setItem('testToken', data.token);
+                    const result = await response.json();
+                    console.log('Login response:', result);
+                    const userData = result.data || result;
+                    const user = userData.user;
+                    addResult('Login Test', 'success', `✓ Login successful: ${user?.email || 'Unknown'} - Token: ${userData.token ? 'Received' : 'Missing'}`);
+                    if (userData.token) {
+                        localStorage.setItem('testToken', userData.token);
+                    }
                 } else {
                     const error = await response.json();
-                    addResult('Login Test', 'error', `✗ Login failed: ${error.message}`);
+                    addResult('Login Test', 'error', `✗ Login failed: ${error.message || 'Unknown error'}`);
                 }
             } catch (error) {
                 addResult('Login Test', 'error', `✗ Connection failed: ${error.message}`);

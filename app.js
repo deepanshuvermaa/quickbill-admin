@@ -35,12 +35,17 @@ async function handleLogin(e) {
         });
         
         if (response.ok) {
-            const data = await response.json();
+            const result = await response.json();
+            
+            // Handle the response structure from your API
+            const userData = result.data || result;
+            const user = userData.user;
+            const token = userData.token;
             
             // Check if user is admin
-            if (data.user.email === 'deepanshuverma966@gmail.com' || data.user.role === 'admin') {
-                authToken = data.token;
-                currentUser = data.user;
+            if (user && (user.email === 'deepanshuverma966@gmail.com' || CONFIG.ADMIN_EMAILS.includes(user.email))) {
+                authToken = token;
+                currentUser = user;
                 localStorage.setItem('adminToken', authToken);
                 showDashboard();
             } else {
