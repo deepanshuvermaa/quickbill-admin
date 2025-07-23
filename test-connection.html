@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Connection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .pending { background-color: #fff3cd; color: #856404; }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>QuickBill API Connection Test</h1>
+    
+    <button onclick="testHealth()">Test Health Endpoint</button>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="testPlans()">Test Plans Endpoint</button>
+    
+    <div id="results"></div>
+    
+    <script>
+        const API_BASE = 'https://quickbill-production.up.railway.app';
+        
+        function addResult(test, status, message) {
+            const div = document.createElement('div');
+            div.className = `test-result ${status}`;
+            div.innerHTML = `<strong>${test}:</strong> ${message}`;
+            document.getElementById('results').appendChild(div);
+        }
+        
+        async function testHealth() {
+            addResult('Health Check', 'pending', 'Testing...');
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                addResult('Health Check', 'success', `✓ API is running: ${JSON.stringify(data)}`);
+            } catch (error) {
+                addResult('Health Check', 'error', `✗ Failed: ${error.message}`);
+            }
+        }
+        
+        async function testLogin() {
+            const email = prompt('Enter your email:');
+            const password = prompt('Enter your password:');
+            
+            if (!email || !password) return;
+            
+            addResult('Login Test', 'pending', 'Testing...');
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('Login Test', 'success', `✓ Login successful: ${data.user.email}`);
+                    localStorage.setItem('testToken', data.token);
+                } else {
+                    const error = await response.json();
+                    addResult('Login Test', 'error', `✗ Login failed: ${error.message}`);
+                }
+            } catch (error) {
+                addResult('Login Test', 'error', `✗ Connection failed: ${error.message}`);
+            }
+        }
+        
+        async function testPlans() {
+            addResult('Plans Test', 'pending', 'Testing...');
+            try {
+                const response = await fetch(`${API_BASE}/api/subscriptions/plans`);
+                const data = await response.json();
+                addResult('Plans Test', 'success', `✓ Loaded ${data.data?.length || 0} plans`);
+            } catch (error) {
+                addResult('Plans Test', 'error', `✗ Failed: ${error.message}`);
+            }
+        }
+        
+        // Auto-test health on load
+        window.onload = () => testHealth();
+    </script>
+</body>
+</html>
