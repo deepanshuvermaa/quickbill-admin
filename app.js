@@ -86,46 +86,89 @@ function showDashboard() {
 async function loadDashboardData() {
     try {
         console.log('Loading dashboard data...');
+        console.log('Auth token:', authToken ? 'Present' : 'Missing');
+        
+        // Show loading indicators
+        document.getElementById('pendingCount').textContent = 'Loading...';
+        document.getElementById('activeCount').textContent = 'Loading...';
+        document.getElementById('userCount').textContent = 'Loading...';
+        document.getElementById('revenueCount').textContent = 'Loading...';
         
         // Load pending payments
-        const pendingResponse = await authenticatedFetch('/subscriptions-simple/pending-payments');
-        console.log('Pending payments response:', pendingResponse.status);
-        if (!pendingResponse.ok) {
-            console.error('Failed to load pending payments:', await pendingResponse.text());
+        try {
+            const pendingResponse = await authenticatedFetch('/subscriptions-simple/pending-payments');
+            console.log('Pending payments response:', pendingResponse.status);
+            
+            if (!pendingResponse.ok) {
+                const errorText = await pendingResponse.text();
+                console.error('Failed to load pending payments:', errorText);
+                document.getElementById('pendingCount').textContent = 'Error';
+                
+                // Check if it's an auth error
+                if (pendingResponse.status === 401 || pendingResponse.status === 403) {
+                    alert('Session expired. Please login again.');
+                    handleLogout();
+                    return;
+                }
+            } else {
+                const pendingData = await pendingResponse.json();
+                console.log('Pending payments data:', pendingData);
+                displayPendingPayments(pendingData.data || []);
+                document.getElementById('pendingCount').textContent = pendingData.data?.length || 0;
+            }
+        } catch (error) {
+            console.error('Error fetching pending payments:', error);
+            document.getElementById('pendingCount').textContent = 'Error';
         }
-        const pendingData = await pendingResponse.json();
-        console.log('Pending payments data:', pendingData);
-        displayPendingPayments(pendingData.data || []);
-        document.getElementById('pendingCount').textContent = pendingData.data?.length || 0;
         
         // Load active subscriptions with user details
-        const activeResponse = await authenticatedFetch('/subscriptions-simple/active-subscriptions');
-        console.log('Active subscriptions response:', activeResponse.status);
-        if (!activeResponse.ok) {
-            console.error('Failed to load active subscriptions:', await activeResponse.text());
+        try {
+            const activeResponse = await authenticatedFetch('/subscriptions-simple/active-subscriptions');
+            console.log('Active subscriptions response:', activeResponse.status);
+            
+            if (!activeResponse.ok) {
+                const errorText = await activeResponse.text();
+                console.error('Failed to load active subscriptions:', errorText);
+                document.getElementById('activeCount').textContent = 'Error';
+            } else {
+                const activeData = await activeResponse.json();
+                console.log('Active subscriptions data:', activeData);
+                displayActiveSubscriptions(activeData.data || []);
+                document.getElementById('activeCount').textContent = activeData.data?.length || 0;
+                
+                // Calculate monthly revenue
+                const revenue = calculateMonthlyRevenue(activeData.data || []);
+                document.getElementById('revenueCount').textContent = `₹${revenue}`;
+            }
+        } catch (error) {
+            console.error('Error fetching active subscriptions:', error);
+            document.getElementById('activeCount').textContent = 'Error';
+            document.getElementById('revenueCount').textContent = 'Error';
         }
-        const activeData = await activeResponse.json();
-        console.log('Active subscriptions data:', activeData);
-        displayActiveSubscriptions(activeData.data || []);
-        document.getElementById('activeCount').textContent = activeData.data?.length || 0;
         
         // Load user stats
-        const usersResponse = await authenticatedFetch('/admin/users');
-        console.log('Users response:', usersResponse.status);
-        if (!usersResponse.ok) {
-            console.error('Failed to load users:', await usersResponse.text());
+        try {
+            const usersResponse = await authenticatedFetch('/admin/users');
+            console.log('Users response:', usersResponse.status);
+            
+            if (!usersResponse.ok) {
+                const errorText = await usersResponse.text();
+                console.error('Failed to load users:', errorText);
+                document.getElementById('userCount').textContent = 'Error';
+            } else {
+                const usersData = await usersResponse.json();
+                console.log('Users data:', usersData);
+                document.getElementById('userCount').textContent = usersData.data?.length || 0;
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            document.getElementById('userCount').textContent = 'Error';
         }
-        const usersData = await usersResponse.json();
-        console.log('Users data:', usersData);
-        document.getElementById('userCount').textContent = usersData.data?.length || 0;
-        
-        // Calculate monthly revenue
-        const revenue = calculateMonthlyRevenue(activeData.data || []);
-        document.getElementById('revenueCount').textContent = `₹${revenue}`;
         
     } catch (error) {
         console.error('Error loading dashboard:', error);
         console.error('Error details:', error.message, error.stack);
+        alert('Failed to load dashboard data. Check console for details.');
     }
 }
 
@@ -525,3 +568,37 @@ async function forceRefresh(userId) {
         alert('Failed to refresh subscription');
     }
 }
+
+// Test API connection
+async function testConnection() {
+    console.log('Testing API connection...');
+    console.log('API Base URL:', API_BASE_URL);
+    console.log('Auth Token:', authToken ? 'Present' : 'Missing');
+    
+    // Test health endpoint
+    try {
+        const healthResponse = await fetch(`${API_BASE_URL.replace('/api', '')}/health`);
+        const healthData = await healthResponse.json();
+        console.log('Health check:', healthData);
+    } catch (error) {
+        console.error('Health check failed:', error);
+    }
+    
+    // Test authenticated endpoint
+    if (authToken) {
+        try {
+            const testResponse = await authenticatedFetch('/admin/users');
+            console.log('Auth test response:', testResponse.status);
+            if (!testResponse.ok) {
+                console.error('Auth test failed:', await testResponse.text());
+            }
+        } catch (error) {
+            console.error('Auth test error:', error);
+        }
+    }
+}
+
+// Run connection test on page load
+window.addEventListener('load', () => {
+    setTimeout(testConnection, 1000);
+});
