@@ -27,13 +27,16 @@ class ParkEaseManager {
     // Check backend connectivity
     async checkConnection() {
         try {
-            const response = await fetch(`${this.apiBaseUrl}/health`);
+            const response = await fetch(`${this.apiBaseUrl}/health`, { timeout: 5000 });
             this.isOnline = response.ok;
             this.updateConnectionStatus();
             return this.isOnline;
         } catch (error) {
+            console.warn('ParkEase backend unavailable, using demo data:', error.message);
             this.isOnline = false;
             this.updateConnectionStatus();
+            // Load demo data when backend is unavailable
+            this.loadDemoData();
             return false;
         }
     }
@@ -42,9 +45,45 @@ class ParkEaseManager {
     updateConnectionStatus() {
         const statusElement = document.getElementById('parkease-status');
         if (statusElement) {
-            statusElement.className = this.isOnline ? 'status-online' : 'status-offline';
-            statusElement.textContent = this.isOnline ? 'Online' : 'Offline';
+            const statusDot = statusElement.querySelector('.w-3');
+            const statusText = statusElement.querySelector('span');
+            
+            if (statusDot) {
+                statusDot.className = this.isOnline 
+                    ? 'w-3 h-3 rounded-full bg-green-400' 
+                    : 'w-3 h-3 rounded-full bg-red-400';
+            }
+            if (statusText) {
+                statusText.textContent = this.isOnline ? 'Connected' : 'Demo Mode';
+                statusText.className = this.isOnline 
+                    ? 'text-sm text-green-600' 
+                    : 'text-sm text-orange-600';
+            }
         }
+    }
+
+    // Load demo data when backend is unavailable
+    loadDemoData() {
+        this.stats = {
+            activeUsers: 5,
+            parkedVehicles: 12,
+            todayRevenue: 1250,
+            activeSessions: 8
+        };
+        
+        this.sessions = [
+            { id: 1, username: 'demo_user1', deviceId: 'demo123', loginTime: new Date(Date.now() - 3600000).toISOString() },
+            { id: 2, username: 'demo_user2', deviceId: 'demo456', loginTime: new Date(Date.now() - 1800000).toISOString() }
+        ];
+        
+        this.activities = [
+            { type: 'login', user: 'demo_user1', timestamp: new Date(Date.now() - 300000).toISOString(), details: 'User logged in successfully' },
+            { type: 'payment', user: 'demo_user2', timestamp: new Date(Date.now() - 600000).toISOString(), details: 'Payment processed - ₹25' }
+        ];
+        
+        this.updateStatsUI();
+        this.updateSessionsUI();
+        this.updateActivityUI();
     }
 
     // Load all ParkEase data
