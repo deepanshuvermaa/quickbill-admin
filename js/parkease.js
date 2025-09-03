@@ -5,7 +5,7 @@
 
 class ParkEaseManager {
     constructor() {
-        this.apiBaseUrl = 'https://parkease-backend-production.up.railway.app';
+        this.apiBaseUrl = window.PARKEASE_CONFIG?.api?.baseUrl || 'https://glistening-rebirth-production.up.railway.app';
         this.refreshInterval = null;
         this.isOnline = false;
         this.stats = {};

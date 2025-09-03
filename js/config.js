@@ -5,7 +5,7 @@
 window.PARKEASE_CONFIG = {
     // API Configuration
     api: {
-        baseUrl: 'https://parkease-backend-production.up.railway.app',
+        baseUrl: 'https://glistening-rebirth-production.up.railway.app',
         healthEndpoint: '/health',
         endpoints: {
             stats: '/api/admin/parkease/stats',

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Printer Settings Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #4CAF50;
+        }
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #f44336;
+        }
+        .settings-display {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .font-test {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>🖨️ QuickBill Printer Settings Test</h1>
+    
+    <div class="test-section">
+        <h2>Current Settings from localStorage</h2>
+        <div id="current-settings" class="settings-display">Loading...</div>
+        <button onclick="loadSettings()">Refresh Settings</button>
+        <button onclick="clearSettings()">Clear All Settings</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Default Settings</h2>
+        <button onclick="testDefaultSettings()">Apply Default Settings</button>
+        <div id="default-status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Font Size Tests</h2>
+        <div class="font-test">
+            <h3>Bill Font Test</h3>
+            <div id="bill-font-test"></div>
+        </div>
+        <div class="font-test">
+            <h3>Report Font Test</h3>
+            <div id="report-font-test"></div>
+        </div>
+        <div class="font-test">
+            <h3>KOT Font Test</h3>
+            <div id="kot-font-test"></div>
+        </div>
+        <button onclick="testFontSizes()">Test All Font Sizes</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Paper Size Tests</h2>
+        <button onclick="testPaperSize('58mm')">Test 58mm</button>
+        <button onclick="testPaperSize('80mm')">Test 80mm (3-inch)</button>
+        <button onclick="testPaperSize('112mm')">Test 112mm</button>
+        <div id="paper-status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Event Listener Test</h2>
+        <button onclick="simulateSettingsUpdate()">Simulate Settings Update Event</button>
+        <div id="event-status"></div>
+    </div>
+
+    <script>
+        // Load and display current settings
+        function loadSettings() {
+            const settings = localStorage.getItem('printerSettings');
+            const method = localStorage.getItem('printMethod');
+            const display = document.getElementById('current-settings');
+            
+            if (settings) {
+                const parsed = JSON.parse(settings);
+                display.innerHTML = `<strong>Printer Settings:</strong>\n${JSON.stringify(parsed, null, 2)}\n\n<strong>Print Method:</strong> ${method || 'browser'}`;
+                display.className = 'settings-display';
+            } else {
+                display.innerHTML = 'No settings found in localStorage';
+                display.className = 'settings-display status error';
+            }
+        }
+        
+        // Clear all settings
+        function clearSettings() {
+            localStorage.removeItem('printerSettings');
+            localStorage.removeItem('printMethod');
+            loadSettings();
+            showStatus('default-status', 'Settings cleared', 'success');
+        }
+        
+        // Test default settings
+        function testDefaultSettings() {
+            const defaultSettings = {
+                paperSize: "80mm",
+                fontSize: "medium",
+                billFontSize: 12,
+                reportFontSize: 11,
+                kotFontSize: 14,
+                customFontSizes: {
+                    bill: 12,
+                    report: 11,
+                    kot: 14,
+                    billHeader: 16,
+                    reportHeader: 14,
+                    kotHeader: 18
+                }
+            };
+            
+            localStorage.setItem('printerSettings', JSON.stringify(defaultSettings));
+            localStorage.setItem('printMethod', 'browser');
+            loadSettings();
+            showStatus('default-status', 'Default settings applied successfully!', 'success');
+        }
+        
+        // Test font sizes
+        function testFontSizes() {
+            const settings = JSON.parse(localStorage.getItem('printerSettings') || '{}');
+            const fonts = settings.customFontSizes || {};
+            
+            // Bill font test
+            const billTest = document.getElementById('bill-font-test');
+            billTest.innerHTML = `
+                <p style="font-size: ${fonts.billHeader || 16}px; font-weight: bold;">Bill Header (${fonts.billHeader || 16}px)</p>
+                <p style="font-size: ${fonts.bill || 12}px;">Bill content text (${fonts.bill || 12}px)</p>
+            `;
+            
+            // Report font test
+            const reportTest = document.getElementById('report-font-test');
+            reportTest.innerHTML = `
+                <p style="font-size: ${fonts.reportHeader || 14}px; font-weight: bold;">Report Header (${fonts.reportHeader || 14}px)</p>
+                <p style="font-size: ${fonts.report || 11}px;">Report content text (${fonts.report || 11}px)</p>
+            `;
+            
+            // KOT font test
+            const kotTest = document.getElementById('kot-font-test');
+            kotTest.innerHTML = `
+                <p style="font-size: ${fonts.kotHeader || 18}px; font-weight: bold;">KOT Header (${fonts.kotHeader || 18}px)</p>
+                <p style="font-size: ${fonts.kot || 14}px;">KOT content text (${fonts.kot || 14}px)</p>
+            `;
+        }
+        
+        // Test paper size
+        function testPaperSize(size) {
+            const settings = JSON.parse(localStorage.getItem('printerSettings') || '{}');
+            settings.paperSize = size;
+            localStorage.setItem('printerSettings', JSON.stringify(settings));
+            loadSettings();
+            
+            const status = document.getElementById('paper-status');
+            let message = '';
+            switch(size) {
+                case '58mm':
+                    message = '58mm (2.3 inch) - Compact receipts';
+                    break;
+                case '80mm':
+                    message = '80mm (3.1 inch) - Standard thermal printer';
+                    break;
+                case '112mm':
+                    message = '112mm (4.4 inch) - Wide format receipts';
+                    break;
+            }
+            showStatus('paper-status', `Paper size set to: ${message}`, 'success');
+        }
+        
+        // Simulate settings update event
+        function simulateSettingsUpdate() {
+            const settings = JSON.parse(localStorage.getItem('printerSettings') || '{}');
+            window.dispatchEvent(new CustomEvent('printerSettingsUpdated', { 
+                detail: settings 
+            }));
+            showStatus('event-status', 'Settings update event dispatched!', 'success');
+        }
+        
+        // Helper function to show status
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.className = `status ${type}`;
+            element.innerHTML = message;
+        }
+        
+        // Listen for settings updates
+        window.addEventListener('printerSettingsUpdated', (event) => {
+            console.log('Settings updated:', event.detail);
+            showStatus('event-status', `Event received! Settings: ${JSON.stringify(event.detail)}`, 'success');
+            loadSettings();
+        });
+        
+        // Load settings on page load
+        window.onload = () => {
+            loadSettings();
+            testFontSizes();
+        };
+    </script>
+</body>
+</html>
