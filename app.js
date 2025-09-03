@@ -50,15 +50,7 @@ async function handleLogin(e) {
             showError('Invalid email or password');
         }
     } catch (error) {
-        // Demo mode - allow admin access when backend is unavailable
-        if (email === 'deepanshuverma966@gmail.com' && password === 'admin123') {
-            authToken = 'demo_token';
-            currentUser = { email: email, role: 'admin', name: 'Demo Admin' };
-            localStorage.setItem('adminToken', authToken);
-            showDashboard();
-        } else {
-            showError('Backend unavailable. Use admin demo: deepanshuverma966@gmail.com / admin123');
-        }
+        showError('Connection error. Please try again.');
         console.error('Login error:', error);
     }
 }
@@ -85,7 +77,7 @@ function showDashboard() {
 async function loadDashboardData() {
     try {
         // Load pending payments
-        const pendingResponse = await authenticatedFetch('/admin/payments/pending');
+        const pendingResponse = await authenticatedFetch('/subscriptions-simple/pending-payments');
         const pendingData = await pendingResponse.json();
         displayPendingPayments(pendingData.data || []);
         document.getElementById('pendingCount').textContent = pendingData.data?.length || 0;
@@ -107,33 +99,7 @@ async function loadDashboardData() {
         
     } catch (error) {
         console.error('Error loading dashboard:', error);
-        // Load demo data when backend is unavailable
-        loadDemoData();
     }
-}
-
-// Load demo data when backend is unavailable
-function loadDemoData() {
-    // Demo stats
-    document.getElementById('pendingCount').textContent = '3';
-    document.getElementById('activeCount').textContent = '15';
-    document.getElementById('userCount').textContent = '48';
-    document.getElementById('revenueCount').textContent = '₹12,450';
-    
-    // Demo pending payments
-    const demoPayments = [
-        { id: 1, user: { email: 'user1@example.com', full_name: 'John Doe' }, plan: 'Gold', amount: '₹299', payment_method: 'UPI', created_at: new Date().toISOString() },
-        { id: 2, user: { email: 'user2@example.com', full_name: 'Jane Smith' }, plan: 'Silver', amount: '₹199', payment_method: 'Card', created_at: new Date(Date.now() - 3600000).toISOString() },
-        { id: 3, user: { email: 'user3@example.com', full_name: 'Bob Johnson' }, plan: 'Platinum', amount: '₹499', payment_method: 'NetBanking', created_at: new Date(Date.now() - 7200000).toISOString() }
-    ];
-    displayPendingPayments(demoPayments);
-    
-    // Demo active subscriptions
-    const demoSubscriptions = [
-        { id: 1, user: { email: 'active1@example.com', full_name: 'Alice Wilson' }, plan: 'Gold', status: 'active', end_date: new Date(Date.now() + 30*24*3600000).toISOString() },
-        { id: 2, user: { email: 'active2@example.com', full_name: 'Charlie Brown' }, plan: 'Silver', status: 'active', end_date: new Date(Date.now() + 15*24*3600000).toISOString() }
-    ];
-    displayActiveSubscriptions(demoSubscriptions);
 }
 
 // Display pending payments
