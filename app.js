@@ -234,6 +234,12 @@ async function viewProof(paymentId) {
 function displayActiveSubscriptions(subscriptions) {
     const container = document.getElementById('activeSubscriptionsList');
     
+    // Check if container exists before trying to use it
+    if (!container) {
+        console.warn('activeSubscriptionsList element not found');
+        return;
+    }
+    
     if (!subscriptions || subscriptions.length === 0) {
         container.innerHTML = '<p class="text-gray-500">No active subscriptions found.</p>';
         return;

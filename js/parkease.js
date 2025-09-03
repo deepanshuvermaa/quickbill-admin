@@ -30,9 +30,12 @@ class ParkEaseManager {
             const response = await fetch(`${this.apiBaseUrl}/health`);
             this.isOnline = response.ok;
             this.updateConnectionStatus();
+            if (!this.isOnline && response.status === 502) {
+                console.warn('ParkEase backend is down (502). Railway may be rebuilding. Will retry in 30 seconds.');
+            }
             return this.isOnline;
         } catch (error) {
-            console.error('ParkEase backend connection failed:', error);
+            console.warn('ParkEase backend connection failed:', error.message);
             this.isOnline = false;
             this.updateConnectionStatus();
             return false;
