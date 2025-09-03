@@ -71,7 +71,8 @@ class ParkEaseManager {
             await Promise.all([
                 this.loadStats(),
                 this.loadActiveSessions(),
-                this.loadRecentActivity()
+                this.loadRecentActivity(),
+                this.loadExpiringSubscriptions()
             ]);
         } catch (error) {
             console.error('Error loading ParkEase data:', error);
@@ -118,6 +119,84 @@ class ParkEaseManager {
             }
         } catch (error) {
             console.error('Error loading activity:', error);
+        }
+    }
+
+    // Load expiring subscriptions
+    async loadExpiringSubscriptions() {
+        try {
+            const response = await this.authenticatedFetch('/api/admin/expiring-subscriptions');
+            if (response.ok) {
+                const data = await response.json();
+                this.updateSubscriptionStatsUI(data.data);
+            }
+        } catch (error) {
+            console.error('Error loading expiring subscriptions:', error);
+        }
+    }
+
+    // Update subscription stats UI
+    updateSubscriptionStatsUI(data) {
+        if (!data) return;
+        
+        const expiringCount = data.expiring_soon?.length || 0;
+        const activeCount = data.active_subscriptions || 0;
+        const trialCount = data.trial_users || 0;
+        
+        document.getElementById('parkease-expiring-count').textContent = expiringCount;
+        document.getElementById('parkease-active-subs').textContent = activeCount;
+        document.getElementById('parkease-trial-users').textContent = trialCount;
+        
+        // Display expiring users list
+        const listContainer = document.getElementById('parkease-expiring-users-list');
+        if (listContainer && data.expiring_soon && data.expiring_soon.length > 0) {
+            let html = '<h4 class="font-semibold text-sm mb-2">Users Requiring Attention:</h4>';
+            
+            data.expiring_soon.forEach(user => {
+                const daysLeft = user.days_remaining || 0;
+                const alertClass = daysLeft <= 1 ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200';
+                const textClass = daysLeft <= 1 ? 'text-red-600' : 'text-yellow-600';
+                
+                html += `
+                    <div class="flex justify-between items-center p-3 rounded-lg border ${alertClass}">
+                        <div>
+                            <p class="font-semibold text-sm">${user.username}</p>
+                            <p class="text-xs text-gray-600">${user.is_trial ? 'Trial' : 'Subscription'} expires in ${daysLeft} day(s)</p>
+                        </div>
+                        <button onclick="window.parkease.extendSubscription('${user.id}')" 
+                                class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm">
+                            Extend
+                        </button>
+                    </div>
+                `;
+            });
+            
+            listContainer.innerHTML = html;
+        } else if (listContainer) {
+            listContainer.innerHTML = '<p class="text-sm text-gray-500">No users expiring soon</p>';
+        }
+    }
+
+    // Extend user subscription
+    async extendSubscription(userId) {
+        const days = prompt('Enter number of days to extend:');
+        if (!days || isNaN(days)) return;
+        
+        try {
+            const response = await this.authenticatedFetch(`/api/admin/users/${userId}/extend-subscription`, {
+                method: 'POST',
+                body: JSON.stringify({ days: parseInt(days) })
+            });
+            
+            if (response.ok) {
+                this.showNotification('Subscription extended successfully', 'success');
+                await this.loadExpiringSubscriptions();
+            } else {
+                this.showNotification('Failed to extend subscription', 'error');
+            }
+        } catch (error) {
+            console.error('Error extending subscription:', error);
+            this.showNotification('Failed to extend subscription', 'error');
         }
     }
 
